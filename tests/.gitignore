@@ -1,0 +1,5 @@
+test_layers
+test_layers.dSYM/
+generated/
+*.o
+*.obj
