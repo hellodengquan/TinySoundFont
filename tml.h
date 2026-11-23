@@ -434,14 +434,15 @@ TMLDEF tml_message* tml_load(struct tml_stream* stream)
 	{
 		tml_message *PrevMessage = TML_NULL, *Msg, *MsgEnd, Swap;
 		unsigned int ticks = 0, tempo_ticks = 0; //tick counter and value at last tempo change
-		int step_smallest, msec, tempo_msec = 0; //msec value at last tempo change
-		double ticks2time = 500000 / (1000.0 * division); //milliseconds per tick
+		unsigned int tempo = 500000; //current tempo in microseconds per quarter note
+		unsigned long long tempo_tickus = 0; //exact time base at last tempo change in tick*microseconds (avoids float drift)
+		int step_smallest, msec; //msec value of the current tick, truncated to whole milliseconds
 
 		// Loop through all messages over all tracks ordered by time
 		for (step_smallest = 0; step_smallest != 0x7fffffff; ticks += step_smallest)
 		{
 			step_smallest = 0x7fffffff;
-			msec = tempo_msec + (int)((ticks - tempo_ticks) * ticks2time);
+			msec = (int)((tempo_tickus + (ticks - tempo_ticks) * (unsigned long long)tempo) / (1000.0 * division));
 			for (t = tracks; t != tracksEnd; t++)
 			{
 				if (t->Idx == t->End) continue;
@@ -451,8 +452,8 @@ TMLDEF tml_message* tml_load(struct tml_stream* stream)
 					if (Msg->type == TML_SET_TEMPO)
 					{
 						unsigned char* Tempo = ((struct tml_tempomsg*)Msg)->Tempo;
-						ticks2time = ((Tempo[0]<<16)|(Tempo[1]<<8)|Tempo[2])/(1000.0 * division);
-						tempo_msec = msec;
+						tempo_tickus += (ticks - tempo_ticks) * (unsigned long long)tempo;
+						tempo = (Tempo[0]<<16)|(Tempo[1]<<8)|Tempo[2];
 						tempo_ticks = ticks;
 					}
 					if (Msg->type)
